@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Package, Search, Plus, Edit3, Trash2, Tag, AlertCircle, LayoutGrid, LayoutList, Layers } from 'lucide-react';
+import { Package, Search, Plus, Edit3, Trash2, Tag, AlertCircle, LayoutGrid, LayoutList, Layers, Camera } from 'lucide-react';
 import { Product, Category } from '../types';
+import { BarcodeScannerModal } from '../components/BarcodeScannerModal';
 
 interface Props {
   products: Product[];
@@ -15,6 +16,7 @@ export const ProductsView: React.FC<Props> = ({ products, categories, onRefresh 
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table'); // Default to Table/List view
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   // New Category Modal State
@@ -445,13 +447,24 @@ export const ProductsView: React.FC<Props> = ({ products, categories, onRefresh 
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Código de Barras (EAN-13)</label>
-                <input
-                  type="text"
-                  placeholder="789..."
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="789..."
+                    value={barcode}
+                    onChange={(e) => setBarcode(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-slate-200 rounded-xl font-mono focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsScannerOpen(true)}
+                    className="px-3 py-2 bg-brand-50 text-brand-700 hover:bg-brand-100 border border-brand-200 font-semibold rounded-xl flex items-center gap-1.5 transition text-xs shadow-sm"
+                    title="Escanear com a Câmera"
+                  >
+                    <Camera className="w-4 h-4 text-brand-600" />
+                    <span className="hidden sm:inline">Escanear</span>
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -586,6 +599,17 @@ export const ProductsView: React.FC<Props> = ({ products, categories, onRefresh 
             </form>
           </div>
         </div>
+      )}
+
+      {/* Barcode Camera Scanner Modal */}
+      {isScannerOpen && (
+        <BarcodeScannerModal
+          onScan={(scannedCode) => {
+            setBarcode(scannedCode);
+            setIsScannerOpen(false);
+          }}
+          onClose={() => setIsScannerOpen(false)}
+        />
       )}
     </div>
   );
