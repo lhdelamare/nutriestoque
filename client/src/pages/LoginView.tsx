@@ -164,44 +164,6 @@ export const LoginView: React.FC<Props> = ({ onLoginSuccess }) => {
 
         {/* Card Form Body */}
         <div className="p-6 sm:p-8 space-y-6">
-          {/* MySQL Connection Status Diagnostic Banner */}
-          <div className="rounded-xl border p-3 text-xs space-y-1 bg-slate-50 border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 font-extrabold text-slate-800">
-                <Database className="w-3.5 h-3.5 text-brand-600" />
-                <span>Status da Conexão MySQL:</span>
-              </div>
-              <button
-                type="button"
-                onClick={checkDbConnection}
-                title="Testar Conexão Novamente"
-                className="text-slate-400 hover:text-slate-700 transition-colors p-1"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${dbStatus.loading ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-
-            {dbStatus.loading ? (
-              <p className="text-[11px] text-slate-500 italic">Testando conexão com o MySQL no servidor...</p>
-            ) : dbStatus.connected ? (
-              <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-[11px]">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>🟢 Conectado ao MySQL (`{dbStatus.host}/{dbStatus.dbName}`)</span>
-              </div>
-            ) : (
-              <div className="space-y-1.5 text-red-700 font-bold text-[11px]">
-                <div className="flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
-                  <span>🔴 FALHA NA CONEXÃO MYSQL (`{dbStatus.host || 'desconhecido'}`)</span>
-                </div>
-                {dbStatus.error && (
-                  <div className="bg-red-100/80 p-2 rounded-lg text-[10px] font-mono font-medium border border-red-200 text-red-950 break-words leading-relaxed">
-                    {dbStatus.error}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
 
           {errorMsg && (
             <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-semibold flex items-center gap-2">
