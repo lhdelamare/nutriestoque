@@ -35,8 +35,32 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/departments', departmentsRoutes);
 app.use('/api/requesters', requestersRoutes);
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', system: 'NutriEstoque - Controle de Estoque Escolar', time: new Date() });
+app.get('/api/health', async (req, res) => {
+  const host = process.env.DB_HOST || '127.0.0.1';
+  const db = process.env.DB_NAME || 'nutri_estoque';
+  
+  try {
+    const userCount = await prisma.user.count();
+    res.json({
+      status: 'OK',
+      dbConnected: true,
+      dbHost: host,
+      dbName: db,
+      userCount,
+      message: `Conectado com sucesso ao MySQL (${host}/${db})`,
+      time: new Date()
+    });
+  } catch (error: any) {
+    console.error('❌ Erro no teste de conexão MySQL (/api/health):', error);
+    res.status(500).json({
+      status: 'ERROR',
+      dbConnected: false,
+      dbHost: host,
+      dbName: db,
+      error: error.message || 'Falha na conexão com o banco de dados MySQL.',
+      time: new Date()
+    });
+  }
 });
 
 // Serve static frontend in production if client/dist exists

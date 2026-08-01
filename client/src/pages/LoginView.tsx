@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Lock, Mail, User, ShieldCheck, ArrowRight, Sparkles, School, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Lock, Mail, User, ShieldCheck, ArrowRight, Sparkles, School, AlertCircle, Database, CheckCircle2, RefreshCw } from 'lucide-react';
 import { User as UserType } from '../types';
 
 interface Props {
@@ -8,6 +8,15 @@ interface Props {
 
 export const LoginView: React.FC<Props> = ({ onLoginSuccess }) => {
   const [isRegisterMode, setIsRegisterMode] = useState(false);
+
+  // Database Connection Diagnostic State
+  const [dbStatus, setDbStatus] = useState<{
+    loading: boolean;
+    connected: boolean;
+    host?: string;
+    dbName?: string;
+    error?: string;
+  }>({ loading: true, connected: false });
 
   // Login Form
   const [email, setEmail] = useState('admin@senai.br');
@@ -22,6 +31,40 @@ export const LoginView: React.FC<Props> = ({ onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  const checkDbConnection = async () => {
+    setDbStatus((prev) => ({ ...prev, loading: true }));
+    try {
+      const res = await fetch('/api/health');
+      const data = await res.json();
+      if (res.ok && data.dbConnected) {
+        setDbStatus({
+          loading: false,
+          connected: true,
+          host: data.dbHost,
+          dbName: data.dbName
+        });
+      } else {
+        setDbStatus({
+          loading: false,
+          connected: false,
+          host: data.dbHost,
+          dbName: data.dbName,
+          error: data.error || 'Não foi possível conectar ao MySQL.'
+        });
+      }
+    } catch (err: any) {
+      setDbStatus({
+        loading: false,
+        connected: false,
+        error: 'Erro de comunicação HTTP com o servidor API.'
+      });
+    }
+  };
+
+  useEffect(() => {
+    checkDbConnection();
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,6 +164,45 @@ export const LoginView: React.FC<Props> = ({ onLoginSuccess }) => {
 
         {/* Card Form Body */}
         <div className="p-6 sm:p-8 space-y-6">
+          {/* MySQL Connection Status Diagnostic Banner */}
+          <div className="rounded-xl border p-3 text-xs space-y-1 bg-slate-50 border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 font-extrabold text-slate-800">
+                <Database className="w-3.5 h-3.5 text-brand-600" />
+                <span>Status da Conexão MySQL:</span>
+              </div>
+              <button
+                type="button"
+                onClick={checkDbConnection}
+                title="Testar Conexão Novamente"
+                className="text-slate-400 hover:text-slate-700 transition-colors p-1"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${dbStatus.loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            {dbStatus.loading ? (
+              <p className="text-[11px] text-slate-500 italic">Testando conexão com o MySQL no servidor...</p>
+            ) : dbStatus.connected ? (
+              <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-[11px]">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>🟢 Conectado ao MySQL (`{dbStatus.host}/{dbStatus.dbName}`)</span>
+              </div>
+            ) : (
+              <div className="space-y-1.5 text-red-700 font-bold text-[11px]">
+                <div className="flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                  <span>🔴 FALHA NA CONEXÃO MYSQL (`{dbStatus.host || 'desconhecido'}`)</span>
+                </div>
+                {dbStatus.error && (
+                  <div className="bg-red-100/80 p-2 rounded-lg text-[10px] font-mono font-medium border border-red-200 text-red-950 break-words leading-relaxed">
+                    {dbStatus.error}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {errorMsg && (
             <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-semibold flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />

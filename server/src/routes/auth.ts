@@ -31,7 +31,10 @@ router.post('/login', async (req, res) => {
     });
   } catch (error: any) {
     console.error('❌ Erro no login (detalhe do banco):', error);
-    res.status(500).json({ error: 'Erro ao realizar login. Verifique a conexão com o banco de dados.' });
+    const dbHost = process.env.DB_HOST || '127.0.0.1';
+    res.status(500).json({ 
+      error: `Erro ao conectar com MySQL (${dbHost}): ${error.message || 'Verifique as variáveis de ambiente e se o container MySQL está ativo.'}` 
+    });
   }
 });
 
