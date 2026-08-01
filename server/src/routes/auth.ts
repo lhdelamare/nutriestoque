@@ -29,8 +29,9 @@ router.post('/login', async (req, res) => {
       user: userInfo,
       token: `token-${user.id}-${Date.now()}`
     });
-  } catch (error) {
-    res.status(500).json({ error: 'Erro ao realizar login.' });
+  } catch (error: any) {
+    console.error('❌ Erro no login (detalhe do banco):', error);
+    res.status(500).json({ error: 'Erro ao realizar login. Verifique a conexão com o banco de dados.' });
   }
 });
 
