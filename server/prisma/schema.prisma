@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Supplier {
+  id            String     @id @default(uuid())
+  name          String     // Razão Social
+  tradeName     String?    // Nome Fantasia
+  cnpj          String     @unique
+  phone         String?
+  email         String?
+  address       String?
+  city          String?
+  state         String?
+  contactPerson String?
+  notes         String?
+  status        String     @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  purchases     Purchase[]
+
+  @@map("supplier")
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  products    Product[]
+
+  @@map("category")
+}
+
+model Product {
+  id                  String     @id @default(uuid())
+  name                String
+  barcode             String?    @unique // Código de barras EAN-13 / QR Code
+  categoryId          String
+  category            Category   @relation(fields: [categoryId], references: [id])
+  defaultUnit         String     @default("UN") // KG, L, UN, PCT, CX
+  minStockAlert       Float      @default(5)
+  storageInstructions String?    // Recomendações de armazenamento (ex: Manter refrigerado)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  batches             Batch[]
+
+  @@map("product")
+}
+
+model Purchase {
+  id            String      @id @default(uuid())
+  supplierId    String
+  supplier      Supplier    @relation(fields: [supplierId], references: [id])
+  invoiceNumber String?     // Número da NFe ou Recibo
+  purchaseDate  DateTime    @default(now())
+  totalAmount   Float       @default(0)
+  notes         String?
+  status        String      @default("COMPLETED")
+  createdAt     DateTime    @default(now())
+
+  batches       Batch[]
+
+  @@map("purchase")
+}
+
+model Batch {
+  id                String       @id @default(uuid())
+  productId         String
+  product           Product      @relation(fields: [productId], references: [id])
+  purchaseId        String?
+  purchase          Purchase?    @relation(fields: [purchaseId], references: [id])
+  batchNumber       String       // Número do Lote do fabricante
+  initialQuantity   Float
+  currentQuantity   Float
+  unitPrice         Float        @default(0)
+  manufacturingDate DateTime?
+  expirationDate    DateTime     // Data de validade
+  status            String       @default("AVAILABLE") // AVAILABLE, DEPLETED, EXPIRED, DISCARDED
+  isFractioned      Boolean      @default(false)
+  originalBatchId   String?      // Se foi derivado de um lote fracionado
+  fractionedAt      DateTime?    // Data em que foi aberto/fracionado
+  shelfLifeDaysTotal Int?        // Validade total original em dias
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  dispatches        Dispatch[]
+  losses            Loss[]
+  fractionedLabels  FractionedLabel[]
+
+  @@map("batch")
+}
+
+model Dispatch {
+  id              String           @id @default(uuid())
+  batchId         String
+  batch           Batch            @relation(fields: [batchId], references: [id])
+  quantity        Float
+  unit            String
+  requestedBy     String           // Nome do Professor ou Solicitante
+  department      String           // Turma / Setor (ex: Berçário, Cozinha Principal, Turma 3B)
+  type            String           @default("TOTAL") // TOTAL, FRACIONADO
+  reason          String?
+  createdAt       DateTime         @default(now())
+
+  fractionedLabel FractionedLabel?
+
+  @@map("dispatch")
+}
+
+model FractionedLabel {
+  id                 String    @id @default(uuid())
+  dispatchId         String?   @unique
+  dispatch           Dispatch? @relation(fields: [dispatchId], references: [id])
+  batchId            String
+  batch              Batch     @relation(fields: [batchId], references: [id])
+  openDate           DateTime  @default(now())
+  newExpirationDate  DateTime  // 1/3 da validade original por padrão
+  fractionedQuantity Float
+  remainingQuantity  Float
+  labelCode          String    @unique
+  printedBy          String    // Responsável pela fracionamento/retirada
+  createdAt          DateTime  @default(now())
+
+  @@map("fractionedlabel")
+}
+
+model Loss {
+  id          String   @id @default(uuid())
+  batchId     String
+  batch       Batch    @relation(fields: [batchId], references: [id])
+  quantity    Float
+  reason      String   // VENCIMENTO, AVARIA, DETERIORACAO, CONTAMINACAO, OUTROS
+  reportedBy  String   // Quem informou o descarte
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@map("loss")
+}
+
+model Department {
+  id          String      @id @default(uuid())
+  name        String      @unique // ex: Berçário 1, Cozinha Principal
+  description String?
+  status      String      @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt   DateTime    @default(now())
+  requesters  Requester[]
+
+  @@map("department")
+}
+
+model Requester {
+  id           String      @id @default(uuid())
+  name         String      // Nome do Professor ou Colaborador
+  role         String      @default("PROFESSOR") // PROFESSOR, MERENDEIRA, INSPETOR, DIRECAO, OUTRO
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  phone        String?
+  email        String?
+  status       String      @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt    DateTime    @default(now())
+
+  @@map("requester")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("ADMIN") // ADMIN, NUTRICIONISTA, COZINHA
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+
+  @@map("user")
+}

@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: #f8fafc;
+    color: #1e293b;
+  }
+}
+
+/* Printable thermal label styling */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-label, #printable-label * {
+    visibility: visible;
+  }
+  #printable-label {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
