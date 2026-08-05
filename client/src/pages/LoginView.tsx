@@ -157,7 +157,7 @@ export const LoginView: React.FC<Props> = ({ onLoginSuccess }) => {
             </span>
             <h2 className="text-2xl font-black mt-1">NutriEstoque</h2>
             <p className="text-brand-100 text-xs mt-0.5">
-              Controle de Compras, Estoque FEFO & Validade
+              Controle de Compras, Validade & Retiradas
             </p>
           </div>
         </div>

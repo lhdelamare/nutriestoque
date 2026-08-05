@@ -4,6 +4,7 @@ import {
   Truck,
   ShoppingCart,
   ArrowDownLeft,
+  RotateCcw,
   Trash2,
   AlertTriangle,
   Package,
@@ -11,8 +12,18 @@ import {
   Sparkles,
   LogOut
 } from 'lucide-react';
+import { User } from '../types';
 
-export type TabType = 'dashboard' | 'fefo-dispatch' | 'purchases' | 'suppliers' | 'losses' | 'alerts' | 'products' | 'team';
+export type TabType =
+  | 'dashboard'
+  | 'fefo-dispatch'
+  | 'returns'
+  | 'purchases'
+  | 'suppliers'
+  | 'losses'
+  | 'alerts'
+  | 'products'
+  | 'team';
 
 interface Props {
   activeTab: TabType;
@@ -21,6 +32,7 @@ interface Props {
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
   onLogout?: () => void;
+  currentUser?: User | null;
 }
 
 export const Sidebar: React.FC<Props> = ({
@@ -29,9 +41,10 @@ export const Sidebar: React.FC<Props> = ({
   alertCount,
   isMobileOpen,
   onCloseMobile,
-  onLogout
+  onLogout,
+  currentUser
 }) => {
-  const menuItems = [
+  const allMenuItems = [
     {
       id: 'dashboard' as TabType,
       label: 'Visão Geral',
@@ -40,9 +53,14 @@ export const Sidebar: React.FC<Props> = ({
     },
     {
       id: 'fefo-dispatch' as TabType,
-      label: 'Retiradas',
+      label: 'Retirada de Produtos',
       icon: ArrowDownLeft,
-      badge: 'FEFO',
+      highlight: true
+    },
+    {
+      id: 'returns' as TabType,
+      label: 'Devoluções de Estoque',
+      icon: RotateCcw,
       highlight: true
     },
     {
@@ -84,6 +102,12 @@ export const Sidebar: React.FC<Props> = ({
     }
   ];
 
+  // Filter items for non-admin users (e.g. PROFESSOR)
+  const isProfessor = currentUser?.role === 'PROFESSOR';
+  const menuItems = isProfessor
+    ? allMenuItems.filter((item) => item.id === 'fefo-dispatch' || item.id === 'returns')
+    : allMenuItems;
+
   const handleSelect = (tab: TabType) => {
     setActiveTab(tab);
     if (onCloseMobile) onCloseMobile();
@@ -93,7 +117,7 @@ export const Sidebar: React.FC<Props> = ({
     <div className="flex flex-col justify-between h-full space-y-4">
       <div className="space-y-1">
         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3 mb-2">
-          Menu de Controle Escolar
+          {isProfessor ? 'Acesso do Solicitante / Professor' : 'Menu de Controle Escolar'}
         </p>
 
         {menuItems.map((item) => {
@@ -125,18 +149,6 @@ export const Sidebar: React.FC<Props> = ({
                 <span>{item.label}</span>
               </div>
 
-              {item.badge && (
-                <span
-                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                    isActive
-                      ? 'bg-white/20 text-white'
-                      : 'bg-brand-100 text-brand-700 border border-brand-200'
-                  }`}
-                >
-                  {item.badge}
-                </span>
-              )}
-
               {item.count !== undefined && item.count > 0 && (
                 <span className="bg-brand-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                   {item.count}
@@ -148,14 +160,14 @@ export const Sidebar: React.FC<Props> = ({
       </div>
 
       <div className="space-y-3 pt-2">
-        {/* Helpful FEFO box */}
-        <div className="bg-gradient-to-br from-brand-50 to-red-100/60 rounded-xl p-3.5 border border-brand-200 text-xs space-y-1.5">
+        {/* Helpful info box */}
+        <div className="bg-gradient-to-br from-brand-50 to-indigo-100/60 rounded-xl p-3.5 border border-brand-200 text-xs space-y-1.5">
           <div className="flex items-center gap-1.5 text-brand-800 font-bold">
             <Sparkles className="w-4 h-4 text-brand-600" />
-            <span>Regra de Validade (FEFO)</span>
+            <span>Validade & Fracionamento</span>
           </div>
           <p className="text-slate-600 text-[11px] leading-relaxed">
-            Retirada orientada pelo <strong>Primeiro que Vence, Primeiro que Sai</strong>. Produtos abertos calculam <strong>1/3 da validade</strong>.
+            Retirada priorizada por <strong>vencimento mais próximo</strong>. Itens abertos calculam <strong>1/3 da validade</strong>.
           </p>
         </div>
 

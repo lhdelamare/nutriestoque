@@ -35,6 +35,8 @@ export interface Product {
   defaultUnit: string;
   minStockAlert: number;
   storageInstructions?: string;
+  shelfNumber?: string;
+  shelfRack?: string;
   currentStock?: number;
   isLowStock?: boolean;
   activeBatchesCount?: number;
@@ -105,6 +107,9 @@ export interface Dispatch {
   department: string;
   type: 'TOTAL' | 'FRACIONADO';
   reason?: string;
+  returnStatus?: 'PENDING' | 'USED' | 'RETURNED' | 'PARTIAL_RETURN';
+  returnedQuantity?: number;
+  acknowledged?: boolean;
   fractionedLabel?: FractionedLabel;
   createdAt: string;
 }
@@ -144,7 +149,7 @@ export interface User {
   name: string;
   email: string;
   password?: string;
-  role: 'ADMIN' | 'NUTRICIONISTA' | 'COZINHA';
+  role: 'ADMIN' | 'PROFESSOR' | 'NUTRICIONISTA' | 'COZINHA';
   status: string;
   createdAt?: string;
 }

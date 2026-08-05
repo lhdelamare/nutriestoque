@@ -35,8 +35,8 @@ router.post('/', async (req, res) => {
       responsiblePerson // Quem retirou/fracionou
     } = req.body;
 
-    if (!batchId || !quantity || !requestedBy) {
-      return res.status(400).json({ error: 'Lote, Quantidade e Solicitante são obrigatórios.' });
+    if (!batchId || !quantity || !requestedBy || !responsiblePerson) {
+      return res.status(400).json({ error: 'Lote, Quantidade, Solicitante e Responsável são obrigatórios.' });
     }
 
     const batch = await prisma.batch.findUnique({
@@ -79,7 +79,8 @@ router.post('/', async (req, res) => {
         requestedBy,
         department: department || 'Geral',
         type: type || 'TOTAL',
-        reason
+        reason,
+        returnStatus: 'PENDING'
       }
     });
 
@@ -142,6 +143,116 @@ router.post('/', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao processar baixa de produto.' });
+  }
+});
+
+// GET pending returns (optional query requestedBy)
+router.get('/pending-returns', async (req, res) => {
+  try {
+    const { requestedBy } = req.query;
+    const term = requestedBy ? String(requestedBy).trim() : '';
+
+    const whereClause: any = {
+      returnStatus: { in: ['PENDING', 'PARTIAL_RETURN'] }
+    };
+
+    if (term) {
+      whereClause.requestedBy = { contains: term };
+    }
+
+    const dispatches = await prisma.dispatch.findMany({
+      where: whereClause,
+      include: {
+        batch: {
+          include: { product: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json(dispatches);
+  } catch (error) {
+    console.error('Erro ao buscar pendências:', error);
+    res.status(500).json({ error: 'Erro ao buscar retiradas pendentes de devolução.' });
+  }
+});
+
+// POST process return or mark as used
+router.post('/:id/return', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, quantityToReturn } = req.body; // action: 'USED' | 'RETURN'
+
+    const dispatch = await prisma.dispatch.findUnique({
+      where: { id },
+      include: { batch: true }
+    });
+
+    if (!dispatch) {
+      return res.status(404).json({ error: 'Registro de retirada não encontrado.' });
+    }
+
+    if (action === 'USED') {
+      const updated = await prisma.dispatch.update({
+        where: { id },
+        data: { returnStatus: 'USED' }
+      });
+      return res.json(updated);
+    }
+
+    if (action === 'RETURN') {
+      const qtyToReturn = parseFloat(quantityToReturn);
+      if (isNaN(qtyToReturn) || qtyToReturn <= 0) {
+        return res.status(400).json({ error: 'Quantidade a devolver inválida.' });
+      }
+
+      const pendingQty = dispatch.quantity - dispatch.returnedQuantity;
+      if (qtyToReturn > pendingQty) {
+        return res.status(400).json({ error: `Quantidade (${qtyToReturn}) é maior que a pendência (${pendingQty}).` });
+      }
+
+      const newReturnedQty = dispatch.returnedQuantity + qtyToReturn;
+      const isFullyReturned = newReturnedQty >= dispatch.quantity;
+      const newStatus = isFullyReturned ? 'RETURNED' : 'PARTIAL_RETURN';
+
+      // Update dispatch
+      const updatedDispatch = await prisma.dispatch.update({
+        where: { id },
+        data: {
+          returnedQuantity: newReturnedQty,
+          returnStatus: newStatus
+        }
+      });
+
+      // Restore quantity to Batch stock
+      await prisma.batch.update({
+        where: { id: dispatch.batchId },
+        data: {
+          currentQuantity: dispatch.batch.currentQuantity + qtyToReturn,
+          status: 'AVAILABLE'
+        }
+      });
+
+      return res.json(updatedDispatch);
+    }
+
+    res.status(400).json({ error: 'Ação de devolução inválida.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao processar devolução.' });
+  }
+});
+
+// POST acknowledge all unread dispatches for Admin alert
+router.post('/acknowledge-all', async (req, res) => {
+  try {
+    await prisma.dispatch.updateMany({
+      where: { acknowledged: false },
+      data: { acknowledged: true }
+    });
+    res.json({ message: 'Todos os alertas de retirada foram marcados como vistos.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao atualizar alertas.' });
   }
 });
 

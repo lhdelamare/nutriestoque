@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingCart, Plus, Trash2, Calendar, CheckCircle2, Camera, Sparkles, FileText, Search, Eye, Layers, X, TrendingUp, TrendingDown, DollarSign, Award, BarChart3 } from 'lucide-react';
+import { ShoppingCart, Plus, Trash2, Calendar, CheckCircle2, Camera, Sparkles, FileText, Search, Eye, Layers, X, TrendingUp, TrendingDown, DollarSign, Award, BarChart3, Truck } from 'lucide-react';
 import { Supplier, Product, Category, Purchase } from '../types';
 import { BarcodeScannerModal } from '../components/BarcodeScannerModal';
 
@@ -22,6 +22,8 @@ interface CustomPurchaseItem {
   unitPrice: number;
   manufacturingDate?: string;
   expirationDate: string;
+  shelfNumber?: string;
+  shelfRack?: string;
   isNewProduct?: boolean;
 }
 
@@ -40,6 +42,41 @@ export const PurchasesView: React.FC<Props> = ({ suppliers, products, categories
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [newCatDesc, setNewCatDesc] = useState('');
+
+  // New Supplier Modal
+  const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+  const [newSuppName, setNewSuppName] = useState('');
+  const [newSuppCnpj, setNewSuppCnpj] = useState('');
+  const [newSuppPhone, setNewSuppPhone] = useState('');
+
+  const handleCreateSupplier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSuppName.trim() || !newSuppCnpj.trim()) return;
+
+    try {
+      const res = await fetch('/api/suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newSuppName, cnpj: newSuppCnpj, phone: newSuppPhone })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Erro ao cadastrar fornecedor.');
+      }
+
+      const created = await res.json();
+      setIsSupplierModalOpen(false);
+      setNewSuppName('');
+      setNewSuppCnpj('');
+      setNewSuppPhone('');
+      onRefresh();
+      setSupplierId(created.id);
+      setMsg({ type: 'success', text: `Fornecedor "${created.name}" cadastrado e selecionado com sucesso!` });
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
 
   // Selected Purchase for Invoice Detail Modal
   const [selectedInvoice, setSelectedInvoice] = useState<Purchase | null>(null);
@@ -95,6 +132,8 @@ export const PurchasesView: React.FC<Props> = ({ suppliers, products, categories
         updated[index].defaultUnit = match.defaultUnit;
         updated[index].categoryId = match.categoryId;
         updated[index].barcode = match.barcode || undefined;
+        updated[index].shelfNumber = match.shelfNumber || undefined;
+        updated[index].shelfRack = match.shelfRack || undefined;
         updated[index].isNewProduct = false;
       } else {
         updated[index].productId = undefined;
@@ -213,7 +252,9 @@ export const PurchasesView: React.FC<Props> = ({ suppliers, products, categories
             quantity: it.quantity,
             unitPrice: it.unitPrice,
             manufacturingDate: it.manufacturingDate,
-            expirationDate: it.expirationDate
+            expirationDate: it.expirationDate,
+            shelfNumber: it.shelfNumber,
+            shelfRack: it.shelfRack
           }))
         })
       });
@@ -385,7 +426,16 @@ export const PurchasesView: React.FC<Props> = ({ suppliers, products, categories
             {/* Header info */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Fornecedor *</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block font-bold text-slate-700">Fornecedor *</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsSupplierModalOpen(true)}
+                    className="text-[11px] font-bold text-brand-600 hover:text-brand-700 flex items-center gap-0.5 bg-brand-50 hover:bg-brand-100 px-2 py-0.5 rounded-md border border-brand-200 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" /> Novo Fornecedor
+                  </button>
+                </div>
                 <select
                   required
                   value={supplierId}
@@ -516,29 +566,51 @@ export const PurchasesView: React.FC<Props> = ({ suppliers, products, categories
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-12 gap-3 items-end pt-2 border-t border-slate-200/60">
-                        <div className="col-span-1 md:col-span-3">
+                        <div className="col-span-1 md:col-span-2">
+                          <label className="block font-bold text-slate-600 text-[11px] mb-1">Nº Estante</label>
+                          <input
+                            type="text"
+                            placeholder="Ex: 1"
+                            value={item.shelfNumber || ''}
+                            onChange={(e) => updateItem(idx, 'shelfNumber', e.target.value)}
+                            className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900"
+                          />
+                        </div>
+
+                        <div className="col-span-1 md:col-span-2">
+                          <label className="block font-bold text-slate-600 text-[11px] mb-1">Prateleira</label>
+                          <input
+                            type="text"
+                            placeholder="Ex: C"
+                            value={item.shelfRack || ''}
+                            onChange={(e) => updateItem(idx, 'shelfRack', e.target.value)}
+                            className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold uppercase text-slate-900"
+                          />
+                        </div>
+
+                        <div className="col-span-1 md:col-span-2">
                           <label className="block font-bold text-slate-600 text-[11px] mb-1">Nº do Lote *</label>
                           <input
                             type="text"
                             required
                             value={item.batchNumber}
                             onChange={(e) => updateItem(idx, 'batchNumber', e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-mono text-xs font-bold"
+                            className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-lg font-mono text-xs font-bold"
                           />
                         </div>
 
-                        <div className="col-span-1 md:col-span-2">
-                          <label className="block font-bold text-slate-600 text-[11px] mb-1">Unidade</label>
+                        <div className="col-span-1 md:col-span-1">
+                          <label className="block font-bold text-slate-600 text-[11px] mb-1">Unid.</label>
                           <select
                             value={item.defaultUnit}
                             onChange={(e) => updateItem(idx, 'defaultUnit', e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-bold text-xs"
+                            className="w-full px-2 py-2 bg-white border border-slate-200 rounded-lg font-bold text-xs"
                           >
-                            <option value="UN">UN (Unidade)</option>
-                            <option value="KG">KG (Quilograma)</option>
-                            <option value="L">L (Litro)</option>
-                            <option value="PCT">PCT (Pacote)</option>
-                            <option value="CX">CX (Caixa)</option>
+                            <option value="UN">UN</option>
+                            <option value="KG">KG</option>
+                            <option value="L">L</option>
+                            <option value="PCT">PCT</option>
+                            <option value="CX">CX</option>
                           </select>
                         </div>
 
@@ -927,6 +999,7 @@ export const PurchasesView: React.FC<Props> = ({ suppliers, products, categories
                     <thead className="bg-slate-100 text-slate-600 font-bold uppercase text-[10px]">
                       <tr>
                         <th className="p-3">Produto</th>
+                        <th className="p-3">Localização</th>
                         <th className="p-3">Lote</th>
                         <th className="p-3">Qtd Inicial</th>
                         <th className="p-3">Saldo Atual</th>
@@ -937,6 +1010,15 @@ export const PurchasesView: React.FC<Props> = ({ suppliers, products, categories
                       {selectedInvoice.batches?.map((b) => (
                         <tr key={b.id}>
                           <td className="p-3 font-bold text-slate-900">{b.product.name}</td>
+                          <td className="p-3 font-semibold text-xs">
+                            {b.product.shelfNumber || b.product.shelfRack ? (
+                              <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 font-bold rounded border border-indigo-200 text-[11px]">
+                                📍 Estante {b.product.shelfNumber || '-'}{b.product.shelfRack ? ` / Prat. ${b.product.shelfRack}` : ''}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-normal">-</span>
+                            )}
+                          </td>
                           <td className="p-3 font-mono text-slate-600">{b.batchNumber}</td>
                           <td className="p-3">{b.initialQuantity} {b.product.defaultUnit}</td>
                           <td className="p-3 font-bold text-brand-700">{b.currentQuantity} {b.product.defaultUnit}</td>
@@ -1020,6 +1102,75 @@ export const PurchasesView: React.FC<Props> = ({ suppliers, products, categories
                   className="px-5 py-2 font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-md"
                 >
                   Cadastrar Categoria
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Supplier Modal */}
+      {isSupplierModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200">
+            <div className="bg-gradient-to-r from-brand-700 to-indigo-700 p-4 text-white flex justify-between items-center">
+              <h3 className="font-extrabold text-base flex items-center gap-2">
+                <Truck className="w-5 h-5" /> Cadastrar Novo Fornecedor
+              </h3>
+              <button onClick={() => setIsSupplierModalOpen(false)} className="text-slate-300 hover:text-white font-bold">
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSupplier} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Razão Social / Nome *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Distribuidora Alimentos LTDA"
+                  value={newSuppName}
+                  onChange={(e) => setNewSuppName(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl font-bold text-slate-900 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">CNPJ *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="00.000.000/0000-00"
+                  value={newSuppCnpj}
+                  onChange={(e) => setNewSuppCnpj(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl font-bold text-slate-900 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Telefone / Celular</label>
+                <input
+                  type="text"
+                  placeholder="(11) 99999-9999"
+                  value={newSuppPhone}
+                  onChange={(e) => setNewSuppPhone(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl font-medium"
+                />
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsSupplierModalOpen(false)}
+                  className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-md"
+                >
+                  Salvar e Selecionar
                 </button>
               </div>
             </form>

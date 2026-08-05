@@ -5,6 +5,7 @@ import { DashboardView } from './pages/DashboardView';
 import { SuppliersView } from './pages/SuppliersView';
 import { PurchasesView } from './pages/PurchasesView';
 import { DispatchesView } from './pages/DispatchesView';
+import { ReturnsView } from './pages/ReturnsView';
 import { LossesView } from './pages/LossesView';
 import { AlertsView } from './pages/AlertsView';
 import { ProductsView } from './pages/ProductsView';
@@ -31,7 +32,15 @@ export function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const saved = localStorage.getItem('nutri_user');
+    if (saved) {
+      const u = JSON.parse(saved);
+      if (u.role === 'PROFESSOR') return 'fefo-dispatch';
+    }
+    return 'dashboard';
+  });
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -41,6 +50,7 @@ export function App() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [recentDispatches, setRecentDispatches] = useState<Dispatch[]>([]);
+  const [unacknowledgedDispatches, setUnacknowledgedDispatches] = useState<Dispatch[]>([]);
   const [recentPurchases, setRecentPurchases] = useState<Purchase[]>([]);
   const [expiringBatches, setExpiringBatches] = useState<Batch[]>([]);
   const [losses, setLosses] = useState<Loss[]>([]);
@@ -51,6 +61,9 @@ export function App() {
     localStorage.setItem('nutri_user', JSON.stringify(user));
     localStorage.setItem('nutri_token', token);
     setCurrentUser(user);
+    if (user.role === 'PROFESSOR') {
+      setActiveTab('fefo-dispatch');
+    }
   };
 
   const handleLogout = () => {
@@ -67,6 +80,7 @@ export function App() {
         setMetrics(data.metrics);
         setRecentDispatches(data.recentDispatches || []);
         setRecentPurchases(data.recentPurchases || []);
+        setUnacknowledgedDispatches(data.unacknowledgedDispatches || []);
       }
     } catch (err) {
       console.error('Erro ao carregar dashboard', err);
@@ -168,6 +182,15 @@ export function App() {
     }
   }, [currentUser]);
 
+  // Guard role navigation for PROFESSOR role
+  useEffect(() => {
+    if (currentUser?.role === 'PROFESSOR') {
+      if (activeTab !== 'fefo-dispatch' && activeTab !== 'returns') {
+        setActiveTab('fefo-dispatch');
+      }
+    }
+  }, [currentUser, activeTab]);
+
   // Mandatory Authentication Guard
   if (!currentUser) {
     return <LoginView onLoginSuccess={handleLoginSuccess} />;
@@ -194,16 +217,20 @@ export function App() {
           isMobileOpen={isMobileMenuOpen}
           onCloseMobile={() => setIsMobileMenuOpen(false)}
           onLogout={handleLogout}
+          currentUser={currentUser}
         />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          {activeTab === 'dashboard' && (
+          {activeTab === 'dashboard' && currentUser?.role !== 'PROFESSOR' && (
             <DashboardView
               metrics={metrics}
               recentDispatches={recentDispatches}
               recentPurchases={recentPurchases}
               expiringBatches={expiringBatches}
+              unacknowledgedDispatches={unacknowledgedDispatches}
+              currentUser={currentUser}
               onNavigate={setActiveTab}
+              onRefreshAll={loadAll}
             />
           )}
 
@@ -211,7 +238,11 @@ export function App() {
             <DispatchesView departments={departments} requesters={requesters} onRefreshAll={loadAll} />
           )}
 
-          {activeTab === 'purchases' && (
+          {activeTab === 'returns' && (
+            <ReturnsView requesters={requesters} onRefreshAll={loadAll} />
+          )}
+
+          {activeTab === 'purchases' && currentUser?.role !== 'PROFESSOR' && (
             <PurchasesView
               suppliers={suppliers}
               products={products}
@@ -221,23 +252,23 @@ export function App() {
             />
           )}
 
-          {activeTab === 'suppliers' && (
+          {activeTab === 'suppliers' && currentUser?.role !== 'PROFESSOR' && (
             <SuppliersView suppliers={suppliers} onRefresh={loadAll} />
           )}
 
-          {activeTab === 'team' && (
+          {activeTab === 'team' && currentUser?.role !== 'PROFESSOR' && (
             <TeamView departments={departments} requesters={requesters} onRefresh={loadAll} />
           )}
 
-          {activeTab === 'losses' && (
+          {activeTab === 'losses' && currentUser?.role !== 'PROFESSOR' && (
             <LossesView losses={losses} batches={batches} onRefreshAll={loadAll} />
           )}
 
-          {activeTab === 'alerts' && (
+          {activeTab === 'alerts' && currentUser?.role !== 'PROFESSOR' && (
             <AlertsView onNavigate={setActiveTab} />
           )}
 
-          {activeTab === 'products' && (
+          {activeTab === 'products' && currentUser?.role !== 'PROFESSOR' && (
             <ProductsView products={products} categories={categories} onRefresh={loadAll} />
           )}
         </main>

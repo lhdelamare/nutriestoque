@@ -11,7 +11,7 @@ import {
   Clock,
   CheckCircle2
 } from 'lucide-react';
-import { DashboardMetrics, Dispatch, Purchase, Batch } from '../types';
+import { DashboardMetrics, Dispatch, Purchase, Batch, User } from '../types';
 import { TabType } from '../components/Sidebar';
 
 interface Props {
@@ -19,7 +19,10 @@ interface Props {
   recentDispatches: Dispatch[];
   recentPurchases: Purchase[];
   expiringBatches: Batch[];
+  unacknowledgedDispatches?: Dispatch[];
+  currentUser?: User | null;
   onNavigate: (tab: TabType) => void;
+  onRefreshAll?: () => void;
 }
 
 export const DashboardView: React.FC<Props> = ({
@@ -27,7 +30,10 @@ export const DashboardView: React.FC<Props> = ({
   recentDispatches,
   recentPurchases,
   expiringBatches,
-  onNavigate
+  unacknowledgedDispatches = [],
+  currentUser,
+  onNavigate,
+  onRefreshAll
 }) => {
   if (!metrics) {
     return (
@@ -41,15 +47,70 @@ export const DashboardView: React.FC<Props> = ({
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
+  const handleAcknowledgeAlerts = async () => {
+    try {
+      await fetch('/api/dispatches/acknowledge-all', { method: 'POST' });
+      if (onRefreshAll) onRefreshAll();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const isAdmin = !currentUser || currentUser.role === 'ADMIN';
+
   return (
     <div className="space-y-6">
+      {/* Admin Red Alert Banner for Product Dispatches */}
+      {isAdmin && unacknowledgedDispatches.length > 0 && (
+        <div className="bg-red-600 text-white p-5 rounded-2xl shadow-xl border-2 border-red-700 space-y-3 animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-white/20 rounded-xl">
+                <AlertTriangle className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black tracking-wide">
+                  🚨 ALERTA ADMINISTRATIVO: RETIRADA DE PRODUTOS REALIZADA!
+                </h3>
+                <p className="text-xs text-red-100 font-medium">
+                  {unacknowledgedDispatches.length} nova(s) retirada(s) foram lançadas no estoque por professores/colaboradores.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleAcknowledgeAlerts}
+              className="px-4 py-2.5 bg-white text-red-700 hover:bg-red-50 font-black text-xs rounded-xl shadow-md transition-colors shrink-0 active:scale-95"
+            >
+              ✓ Marcar como Visto / Ciente
+            </button>
+          </div>
+
+          <div className="bg-red-800/60 rounded-xl p-3 text-xs space-y-1.5 border border-red-500/50 max-h-40 overflow-y-auto">
+            {unacknowledgedDispatches.map((d) => (
+              <div
+                key={d.id}
+                className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-red-600/40 pb-1.5 last:border-0"
+              >
+                <span>
+                  <strong>{d.requestedBy}</strong> retirou <strong>{d.quantity} {d.unit}</strong> de{' '}
+                  <strong className="underline">{d.batch?.product?.name}</strong> (Setor: {d.department})
+                </span>
+                <span className="text-[11px] text-red-200 shrink-0">
+                  {new Date(d.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Top Banner Action */}
-      <div className="bg-gradient-to-r from-brand-700 via-brand-600 to-red-600 rounded-2xl p-6 text-white shadow-lg shadow-brand-700/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-brand-700 via-brand-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg shadow-brand-700/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <span className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
             Recomendação Diária da Cozinha Escolar
           </span>
-          <h2 className="text-2xl font-black mt-2">Sistema de Baixa por Validade (FEFO)</h2>
+          <h2 className="text-2xl font-black mt-2">Sistema de Baixa e Saída de Produtos</h2>
           <p className="text-brand-100 text-sm mt-1 max-w-2xl">
             Priorize o uso dos produtos com menor tempo de validade. Ao retirar produtos fracionados, o sistema calcula a nova validade de 1/3 e gera a etiqueta de armazenamento.
           </p>

@@ -31,6 +31,8 @@ export const ProductsView: React.FC<Props> = ({ products, categories, onRefresh 
   const [defaultUnit, setDefaultUnit] = useState('UN');
   const [minStockAlert, setMinStockAlert] = useState('5');
   const [storageInstructions, setStorageInstructions] = useState('');
+  const [shelfNumber, setShelfNumber] = useState('');
+  const [shelfRack, setShelfRack] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleCreateCategory = async (e: React.FormEvent) => {
@@ -63,6 +65,8 @@ export const ProductsView: React.FC<Props> = ({ products, categories, onRefresh 
     setDefaultUnit('UN');
     setMinStockAlert('5');
     setStorageInstructions('');
+    setShelfNumber('');
+    setShelfRack('');
     setErrorMsg('');
     setIsModalOpen(true);
   };
@@ -75,6 +79,8 @@ export const ProductsView: React.FC<Props> = ({ products, categories, onRefresh 
     setDefaultUnit(prod.defaultUnit);
     setMinStockAlert(String(prod.minStockAlert));
     setStorageInstructions(prod.storageInstructions || '');
+    setShelfNumber(prod.shelfNumber || '');
+    setShelfRack(prod.shelfRack || '');
     setErrorMsg('');
     setIsModalOpen(true);
   };
@@ -91,11 +97,13 @@ export const ProductsView: React.FC<Props> = ({ products, categories, onRefresh 
     try {
       const payload = {
         name,
-        barcode: barcode || undefined,
+        barcode: barcode ? barcode.trim() : undefined,
         categoryId,
         defaultUnit,
         minStockAlert: parseFloat(minStockAlert) || 0,
-        storageInstructions
+        storageInstructions,
+        shelfNumber: shelfNumber ? shelfNumber.trim() : '',
+        shelfRack: shelfRack ? shelfRack.trim() : ''
       };
 
       let res;
@@ -259,6 +267,7 @@ export const ProductsView: React.FC<Props> = ({ products, categories, onRefresh 
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                 <tr>
                   <th className="p-4">Alimento / Produto</th>
+                  <th className="p-4">Localização</th>
                   <th className="p-4">Unidade</th>
                   <th className="p-4">Estoque Atual</th>
                   <th className="p-4 text-right">Ações</th>
@@ -281,6 +290,16 @@ export const ProductsView: React.FC<Props> = ({ products, categories, onRefresh 
                             <span className="text-[11px] text-slate-400">Estoque Mínimo: {p.minStockAlert} {p.defaultUnit}</span>
                           </div>
                         </div>
+                      </td>
+
+                      <td className="p-4">
+                        {p.shelfNumber || p.shelfRack ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-800 border border-indigo-200 rounded font-bold text-xs">
+                            📍 Estante {p.shelfNumber || '-'}{p.shelfRack ? ` / Prat. ${p.shelfRack}` : ''}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 font-normal">-</span>
+                        )}
                       </td>
 
                       <td className="p-4 font-bold text-slate-800 text-sm">{p.defaultUnit}</td>
@@ -508,6 +527,30 @@ export const ProductsView: React.FC<Props> = ({ products, categories, onRefresh 
                     value={minStockAlert}
                     onChange={(e) => setMinStockAlert(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Nº Estante (ex: 1, 2, 3)</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: 1"
+                    value={shelfNumber}
+                    onChange={(e) => setShelfNumber(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Prateleira (ex: A, B, C)</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: C"
+                    value={shelfRack}
+                    onChange={(e) => setShelfRack(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold text-slate-900 uppercase"
                   />
                 </div>
               </div>

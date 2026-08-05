@@ -56,7 +56,7 @@ router.get('/', async (req, res) => {
 // Create product
 router.post('/', async (req, res) => {
   try {
-    const { name, barcode, categoryId, defaultUnit, minStockAlert, storageInstructions } = req.body;
+    const { name, barcode, categoryId, defaultUnit, minStockAlert, storageInstructions, shelfNumber, shelfRack } = req.body;
     if (!name) {
       return res.status(400).json({ error: 'Nome do produto é obrigatório.' });
     }
@@ -74,7 +74,9 @@ router.post('/', async (req, res) => {
         categoryId: catId,
         defaultUnit: defaultUnit || 'UN',
         minStockAlert: minStockAlert ? parseFloat(minStockAlert) : 5,
-        storageInstructions
+        storageInstructions,
+        shelfNumber: shelfNumber ? String(shelfNumber).trim() : null,
+        shelfRack: shelfRack ? String(shelfRack).trim() : null
       },
       include: { category: true }
     });
@@ -91,7 +93,7 @@ router.post('/', async (req, res) => {
 // Update product
 router.put('/:id', async (req, res) => {
   try {
-    const { name, barcode, categoryId, defaultUnit, minStockAlert, storageInstructions } = req.body;
+    const { name, barcode, categoryId, defaultUnit, minStockAlert, storageInstructions, shelfNumber, shelfRack } = req.body;
 
     const updated = await prisma.product.update({
       where: { id: req.params.id },
@@ -101,13 +103,16 @@ router.put('/:id', async (req, res) => {
         categoryId,
         defaultUnit,
         minStockAlert: minStockAlert ? parseFloat(minStockAlert) : undefined,
-        storageInstructions
+        storageInstructions,
+        shelfNumber: shelfNumber ? String(shelfNumber).trim() : null,
+        shelfRack: shelfRack ? String(shelfRack).trim() : null
       },
       include: { category: true }
     });
 
     res.json(updated);
   } catch (error) {
+    console.error('Erro ao atualizar produto:', error);
     res.status(500).json({ error: 'Erro ao atualizar produto.' });
   }
 });

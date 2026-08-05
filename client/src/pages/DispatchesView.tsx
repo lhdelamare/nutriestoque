@@ -47,16 +47,21 @@ export const DispatchesView: React.FC<Props> = ({ departments, requesters, onRef
     fetchFefoProducts(searchTerm);
   }, [searchTerm]);
 
-  const handleSelectBatch = (prod: Product, batch: Batch) => {
-    setSelectedProduct(prod);
-    setSelectedBatch(batch);
-    setQuantity('1');
+  useEffect(() => {
     if (requesters.length > 0 && !requestedBy) {
       setRequestedBy(requesters[0].name);
     }
     if (departments.length > 0 && !department) {
       setDepartment(departments[0].name);
     }
+  }, [requesters, departments]);
+
+  const handleSelectBatch = (prod: Product, batch: Batch) => {
+    setSelectedProduct(prod);
+    setSelectedBatch(batch);
+    setQuantity('1');
+    setRequestedBy(requestedBy || requesters[0]?.name || '');
+    setDepartment(department || departments[0]?.name || '');
   };
 
   // Live preview of calculated 1/3 expiration date for fractioned items
@@ -83,7 +88,18 @@ export const DispatchesView: React.FC<Props> = ({ departments, requesters, onRef
 
   const handleDispatchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedBatch || !requestedBy) return;
+    const finalRequestedBy = requestedBy || requesters[0]?.name;
+    const finalResponsible = responsiblePerson.trim();
+
+    if (!selectedBatch || !finalRequestedBy) {
+      alert('Selecione o Solicitante (Professor / Colaborador).');
+      return;
+    }
+
+    if (!finalResponsible) {
+      alert('Informe o Responsável pela Cozinha / Baixa.');
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -94,11 +110,11 @@ export const DispatchesView: React.FC<Props> = ({ departments, requesters, onRef
         body: JSON.stringify({
           batchId: selectedBatch.id,
           quantity: parseFloat(quantity),
-          requestedBy,
-          department,
+          requestedBy: finalRequestedBy,
+          department: department || departments[0]?.name || 'Geral',
           type,
           reason,
-          responsiblePerson
+          responsiblePerson: finalResponsible
         })
       });
 
@@ -136,9 +152,9 @@ export const DispatchesView: React.FC<Props> = ({ departments, requesters, onRef
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="text-[11px] uppercase tracking-wider font-extrabold text-brand-700 bg-brand-100 px-3 py-1 rounded-full border border-brand-200">
-            Regra FEFO - Primeiro que Vence, Primeiro que Sai
+            Prioridade por Vencimento - Mais Próximo Primeiro
           </span>
-          <h2 className="text-2xl font-black text-slate-900 mt-1">Sistema de Baixa por Requisição</h2>
+          <h2 className="text-2xl font-black text-slate-900 mt-1">Sistema de Retirada por Requisição</h2>
           <p className="text-xs text-slate-500">
             Pesquise o produto para ver os lotes ordenados por data de vencimento e selecione retirada total ou fracionada com etiqueta.
           </p>
@@ -160,9 +176,9 @@ export const DispatchesView: React.FC<Props> = ({ departments, requesters, onRef
         </div>
       </div>
 
-      {/* Grid: Search Results & FEFO Batch Cards */}
+      {/* Grid: Search Results & Batch Cards */}
       <div className="space-y-6">
-        {loading && <p className="text-xs text-slate-400 text-center py-6">Consultando estoque FEFO...</p>}
+        {loading && <p className="text-xs text-slate-400 text-center py-6">Consultando estoque disponível...</p>}
 
         {!loading &&
           productsFefo
@@ -176,6 +192,11 @@ export const DispatchesView: React.FC<Props> = ({ departments, requesters, onRef
                       <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
                         Unidade: {prod.defaultUnit}
                       </span>
+                      {(prod.shelfNumber || prod.shelfRack) && (
+                        <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          📍 Local: Estante {prod.shelfNumber || '-'}{prod.shelfRack ? ` / Prat. ${prod.shelfRack}` : ''}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">
                       Categoria: <strong>{prod.category?.name}</strong> | Saldo Total Disponível: <strong className="text-brand-700">{prod.totalStock} {prod.defaultUnit}</strong>
@@ -185,7 +206,7 @@ export const DispatchesView: React.FC<Props> = ({ departments, requesters, onRef
 
                 <div className="space-y-3">
                   <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                    Lotes em Estoque (Prioridade FEFO - Mais Próximo do Vencimento):
+                    Lotes em Estoque (Mais Próximos do Vencimento):
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -203,7 +224,7 @@ export const DispatchesView: React.FC<Props> = ({ departments, requesters, onRef
                         >
                           {batch.isFefoRecommended && (
                             <span className="bg-brand-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider inline-flex items-center gap-1 shadow-sm">
-                              <Sparkles className="w-3 h-3" /> 🔥 RECOMENDADO FEFO - VENCE PRIMEIRO
+                              <Sparkles className="w-3 h-3" /> 🔥 PRÓXIMO AO VENCIMENTO - USAR PRIMEIRO
                             </span>
                           )}
 
@@ -225,6 +246,11 @@ export const DispatchesView: React.FC<Props> = ({ departments, requesters, onRef
                               <strong className="text-slate-900 font-extrabold ml-1">
                                 {batch.currentQuantity} {prod.defaultUnit}
                               </strong>
+                              {(prod.shelfNumber || prod.shelfRack) && (
+                                <span className="block text-[11px] font-bold text-indigo-700 mt-0.5">
+                                  📍 Estante {prod.shelfNumber || '-'}{prod.shelfRack ? ` / Prat. ${prod.shelfRack}` : ''}
+                                </span>
+                              )}
                             </div>
 
                             <button
@@ -232,7 +258,7 @@ export const DispatchesView: React.FC<Props> = ({ departments, requesters, onRef
                                 setSelectedBatch(batch);
                                 setSelectedProduct(prod);
                               }}
-                              className="bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-3.5 py-1.5 rounded-lg shadow-sm text-xs flex items-center gap-1 active:scale-95 transition-all"
+                              className="bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-3.5 py-1.5 rounded-lg shadow-sm text-xs flex items-center gap-1 active:scale-95 transition-all shrink-0"
                             >
                               <ArrowDownLeft className="w-3.5 h-3.5" /> Retirar Alimento
                             </button>
@@ -273,13 +299,21 @@ export const DispatchesView: React.FC<Props> = ({ departments, requesters, onRef
 
             <form onSubmit={handleDispatchSubmit} className="p-6 space-y-4 text-xs">
               {/* Info Banner */}
-              <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center justify-between">
+              <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
                   <span className="text-[11px] text-slate-500 block">Validade deste Lote:</span>
                   <strong className="text-brand-700 font-extrabold text-sm">
                     {new Date(selectedBatch.expirationDate).toLocaleDateString('pt-BR')}
                   </strong>
                 </div>
+
+                <div>
+                  <span className="text-[11px] text-slate-500 block">Localização na Estante:</span>
+                  <strong className="text-indigo-800 font-black text-sm flex items-center gap-1">
+                    📍 {selectedProduct.shelfNumber || selectedProduct.shelfRack ? `Estante ${selectedProduct.shelfNumber || '-'}${selectedProduct.shelfRack ? ` / Prat. ${selectedProduct.shelfRack}` : ''}` : 'Não informada'}
+                  </strong>
+                </div>
+
                 <div className="text-right">
                   <span className="text-[11px] text-slate-500 block">Saldo Atual do Lote:</span>
                   <strong className="text-slate-900 font-extrabold text-sm">
@@ -344,12 +378,16 @@ export const DispatchesView: React.FC<Props> = ({ departments, requesters, onRef
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Responsável pela Cozinha / Baixa</label>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Responsável pela Cozinha / Baixa *
+                  </label>
                   <input
                     type="text"
+                    required
+                    placeholder="Digite seu nome (Responsável pela Baixa)..."
                     value={responsiblePerson}
                     onChange={(e) => setResponsiblePerson(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold text-slate-900 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
                   />
                 </div>
               </div>

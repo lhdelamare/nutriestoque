@@ -63,6 +63,16 @@ router.get('/', async (req, res) => {
       }
     });
 
+    // Unacknowledged Dispatches for Admin Red Alert Banner
+    const unacknowledgedDispatches = await prisma.dispatch.findMany({
+      where: { acknowledged: false },
+      take: 10,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        batch: { include: { product: true } }
+      }
+    });
+
     res.json({
       metrics: {
         suppliersCount,
@@ -76,7 +86,8 @@ router.get('/', async (req, res) => {
         totalLossesValue
       },
       recentDispatches,
-      recentPurchases
+      recentPurchases,
+      unacknowledgedDispatches
     });
   } catch (error) {
     console.error(error);

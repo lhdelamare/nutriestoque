@@ -31,7 +31,7 @@ CREATE TABLE `user` (
   `name` VARCHAR(191) NOT NULL,
   `email` VARCHAR(191) NOT NULL,
   `password` VARCHAR(191) NOT NULL,
-  `role` VARCHAR(50) NOT NULL DEFAULT 'ADMIN', -- ADMIN, NUTRICIONISTA, COZINHA
+  `role` VARCHAR(50) NOT NULL DEFAULT 'ADMIN', -- ADMIN, PROFESSOR, NUTRICIONISTA, COZINHA
   `status` VARCHAR(50) NOT NULL DEFAULT 'ACTIVE', -- ACTIVE, INACTIVE
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),
@@ -82,6 +82,8 @@ CREATE TABLE `product` (
   `defaultUnit` VARCHAR(50) NOT NULL DEFAULT 'UN', -- KG, L, UN, PCT, CX
   `minStockAlert` DOUBLE NOT NULL DEFAULT 5,
   `storageInstructions` TEXT DEFAULT NULL,
+  `shelfNumber` VARCHAR(191) DEFAULT NULL, -- Número da Estante (ex: 1, 2, 3)
+  `shelfRack` VARCHAR(191) DEFAULT NULL,   -- Letra da Prateleira (ex: A, B, C)
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updatedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),
@@ -108,7 +110,7 @@ CREATE TABLE `purchase` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- 6. TABELA DE LOTES E VALIDADES FEFO (batch)
+-- 6. TABELA DE LOTES E VALIDADES (batch)
 -- ------------------------------------------------------------
 CREATE TABLE `batch` (
   `id` VARCHAR(191) NOT NULL,
@@ -176,6 +178,9 @@ CREATE TABLE `dispatch` (
   `department` VARCHAR(191) NOT NULL,
   `type` VARCHAR(50) NOT NULL DEFAULT 'TOTAL', -- TOTAL, FRACIONADO
   `reason` TEXT DEFAULT NULL,
+  `returnStatus` VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, USED, RETURNED, PARTIAL_RETURN
+  `returnedQuantity` DOUBLE NOT NULL DEFAULT 0,
+  `acknowledged` TINYINT(1) NOT NULL DEFAULT 0, -- Alerta Admin de retirada
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),
   KEY `dispatch_batchId_fkey` (`batchId`),
@@ -256,17 +261,32 @@ INSERT INTO `supplier` (`id`, `name`, `tradeName`, `cnpj`, `phone`, `email`, `ci
 ('sup-02', 'Atacadão de Alimentos São José S.A.', 'Atacadão São José', '98.765.432/0001-10', '(11) 3322-5544', 'vendas@atacadaosaojose.com.br', 'Campinas', 'SP', 'ACTIVE');
 
 -- Produtos no Catálogo
-INSERT INTO `product` (`id`, `name`, `barcode`, `categoryId`, `defaultUnit`, `minStockAlert`, `storageInstructions`) VALUES
-('prod-01', 'Leite Integral 1L', '7891000123456', 'cat-01', 'L', 10, 'Após aberto, manter sob refrigeração e consumir em até 3 dias.'),
-('prod-02', 'Arroz Branco 5kg', '7891000654321', 'cat-02', 'PCT', 5, 'Conservar em local seco, arejado e protegido da umidade.'),
-('prod-03', 'Feijão Carioca 1kg', '7891000987654', 'cat-02', 'PCT', 8, 'Armazenar em local fresco.');
+INSERT INTO `product` (`id`, `name`, `barcode`, `categoryId`, `defaultUnit`, `minStockAlert`, `storageInstructions`, `shelfNumber`, `shelfRack`) VALUES
+('prod-01', 'Leite Integral 1L', '7891000123456', 'cat-01', 'L', 10, 'Após aberto, manter sob refrigeração e consumir em até 3 dias.', '1', 'C'),
+('prod-02', 'Arroz Branco 5kg', '7891000654321', 'cat-02', 'PCT', 5, 'Conservar em local seco, arejado e protegido da umidade.', '2', 'B'),
+('prod-03', 'Feijão Carioca 1kg', '7891000987654', 'cat-02', 'PCT', 8, 'Armazenar em local fresco.', '2', 'A');
 
 -- Compra Inicial
 INSERT INTO `purchase` (`id`, `supplierId`, `invoiceNumber`, `purchaseDate`, `totalAmount`, `status`) VALUES
 ('pur-01', 'sup-01', 'NFe-10492', '2026-08-01 10:00:00', 450.00, 'COMPLETED');
 
--- Lotes FEFO Iniciais
+-- Lotes Iniciais
 INSERT INTO `batch` (`id`, `productId`, `purchaseId`, `batchNumber`, `initialQuantity`, `currentQuantity`, `unitPrice`, `expirationDate`, `status`, `shelfLifeDaysTotal`) VALUES
 ('batch-01', 'prod-01', 'pur-01', 'LOTE-L8492', 50, 42, 4.50, DATE_ADD(NOW(), INTERVAL 5 DAY), 'AVAILABLE', 30),
 ('batch-02', 'prod-01', 'pur-01', 'LOTE-L8499', 40, 40, 4.60, DATE_ADD(NOW(), INTERVAL 25 DAY), 'AVAILABLE', 30),
 ('batch-03', 'prod-02', 'pur-01', 'LOTE-A5011', 20, 18, 22.00, DATE_ADD(NOW(), INTERVAL 180 DAY), 'AVAILABLE', 365);
+
+-- ============================================================
+-- COMANDOS DE MIGRAÇÃO PARA BANCO DE DADOS JÁ EXISTENTE
+-- Se o seu banco já contém dados e você NÃO quer recriar as tabelas do zero,
+-- rode apenas os comandos ALTER TABLE abaixo:
+-- ============================================================
+
+-- Localização dos alimentos (Estante e Prateleira)
+ALTER TABLE `product` ADD COLUMN `shelfNumber` VARCHAR(191) DEFAULT NULL;
+ALTER TABLE `product` ADD COLUMN `shelfRack` VARCHAR(191) DEFAULT NULL;
+
+-- Controle de Devoluções e Alertas de Retirada
+ALTER TABLE `dispatch` ADD COLUMN `returnStatus` VARCHAR(50) NOT NULL DEFAULT 'PENDING';
+ALTER TABLE `dispatch` ADD COLUMN `returnedQuantity` DOUBLE NOT NULL DEFAULT 0;
+ALTER TABLE `dispatch` ADD COLUMN `acknowledged` TINYINT(1) NOT NULL DEFAULT 0;

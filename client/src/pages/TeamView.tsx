@@ -37,7 +37,7 @@ export const TeamView: React.FC<Props> = ({ departments, requesters, onRefresh }
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [userPassword, setUserPassword] = useState('');
-  const [userRole, setUserRole] = useState<'ADMIN' | 'NUTRICIONISTA' | 'COZINHA'>('ADMIN');
+  const [userRole, setUserRole] = useState<'ADMIN' | 'PROFESSOR' | 'NUTRICIONISTA' | 'COZINHA'>('ADMIN');
   const [userStatus, setUserStatus] = useState('ACTIVE');
 
   const [errorMsg, setErrorMsg] = useState('');
@@ -913,6 +913,7 @@ export const TeamView: React.FC<Props> = ({ departments, requesters, onRefresh }
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white font-bold"
                 >
                   <option value="ADMIN">Administrador (Acesso Total)</option>
+                  <option value="PROFESSOR">Professor / Solicitante (Retirada e Devoluções Apenas)</option>
                   <option value="NUTRICIONISTA">Nutricionista / Gestão</option>
                   <option value="COZINHA">Operador de Cozinha / Retiradas</option>
                 </select>

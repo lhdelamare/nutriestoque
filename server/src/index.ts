@@ -82,6 +82,26 @@ import { prisma } from './lib/prisma.js';
 async function initDatabaseOnStartup() {
   try {
     const userCount = await prisma.user.count().catch(() => -1);
+    // Garantir colunas adicionais para atualização de versão
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE \`product\` ADD COLUMN \`shelfNumber\` VARCHAR(191) DEFAULT NULL`);
+    } catch (e) {}
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE \`product\` ADD COLUMN \`shelfRack\` VARCHAR(191) DEFAULT NULL`);
+    } catch (e) {}
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE \`dispatch\` ADD COLUMN \`returnStatus\` VARCHAR(50) NOT NULL DEFAULT 'PENDING'`);
+    } catch (e) {}
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE \`dispatch\` ADD COLUMN \`returnedQuantity\` DOUBLE NOT NULL DEFAULT 0`);
+    } catch (e) {}
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE \`dispatch\` ADD COLUMN \`acknowledged\` TINYINT(1) NOT NULL DEFAULT 0`);
+    } catch (e) {}
+    try {
+      await prisma.$executeRawUnsafe(`UPDATE \`dispatch\` SET \`returnStatus\` = 'PENDING' WHERE \`returnStatus\` IS NULL OR \`returnStatus\` = '' OR \`returnStatus\` = '0'`);
+    } catch (e) {}
+
     if (userCount === -1 || userCount === 0) {
       console.log('⚡ Inicializando estrutura de tabelas e seed no MySQL...');
       await prisma.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');

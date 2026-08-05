@@ -66,6 +66,15 @@ router.post('/', async (req, res) => {
 
         if (existingProd) {
           targetProductId = existingProd.id;
+          if (item.shelfNumber || item.shelfRack) {
+            await prisma.product.update({
+              where: { id: existingProd.id },
+              data: {
+                shelfNumber: item.shelfNumber || existingProd.shelfNumber,
+                shelfRack: item.shelfRack || existingProd.shelfRack
+              }
+            });
+          }
         } else {
           // Create new product on the fly!
           const newProd = await prisma.product.create({
@@ -73,7 +82,9 @@ router.post('/', async (req, res) => {
               name: productNameInput?.trim() || `Produto ${barcodeInput}`,
               barcode: barcodeInput || null,
               categoryId: item.categoryId || defaultCat.id,
-              defaultUnit: item.defaultUnit || 'UN'
+              defaultUnit: item.defaultUnit || 'UN',
+              shelfNumber: item.shelfNumber || null,
+              shelfRack: item.shelfRack || null
             }
           });
           targetProductId = newProd.id;
